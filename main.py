@@ -8,7 +8,7 @@ from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageH
 import strings as st
 
 
-# поиск токена для телеграмма
+# Поиск токена
 def getToken():
     token = ''
     if os.path.isfile(st.BOT_TOKEN_FILENAME):
@@ -17,14 +17,11 @@ def getToken():
         f.close()
     else:
         print("Пожалуйста, создайте в папке проекта файл 'token.txt' и поместите туда токен для работы телеграм бота  и запустите скрипт заново")
-        sys.exit()  # завершить работу скрипта
+        sys.exit()  
     return token
 
 
 # проверка на выигрыш
-# проверяет нет ли победной комбинации в строчках, столбцах или по диагонали
-# arr - массив
-# who - кого надо проверить: нужно передать значение 'х' или '0'
 def isWin(arr, who):
     if (((arr[0] == who) and (arr[4] == who) and (arr[8] == who)) or
             ((arr[2] == who) and (arr[4] == who) and (arr[6] == who)) or
@@ -38,8 +35,7 @@ def isWin(arr, who):
     return False
 
 
-# возвращает количество неопределенных ячеек (т.е. количество ячеек, в которые можно сходить)
-# cellArray - массив данных из callBackData, полученных после нажатия на callBack-кнопку
+# возвращает количество неопределенных ячеек
 def countUndefinedCells(cellArray):
     counter = 0
     for i in cellArray:
@@ -48,52 +44,31 @@ def countUndefinedCells(cellArray):
     return counter
 
 
-# callBackData формат:
-# n????????? - общее описание
-# n - номер кнопки
-# ? - один из вариантов значения клетки: смотри модуль strings, раздел "символы, которые используются"
-# пример: 5❌❌⭕⭕❌❌◻◻❌
-# означает, что была нажата пятая кнопка, и текущий вид поля:
-# ❌❌⭕
-# ⭕❌❌
-# ◻◻❌
-# данные обо всем состоянии поля необходимо помещать в кнопку, т.к. бот имеет доступ к информации только из текущего сообщения
-
-# игра: проверка возможности хода крестиком, проверка победы крестика, ход бота (ноликом), проверка победы ботом
-# возвращает:
-# message - сообщение, которое надо отправить
 # callBackData - данные для формирования callBack данных обновленного игрового поля
 def game(callBackData):
-    # -------------------------------------------------- global message  # использование глобальной переменной message
-    message = st.ANSW_YOUR_TURN  # сообщение, которое вернется
+    message = st.ANSW_YOUR_TURN 
     alert = None
 
-    buttonNumber = int(callBackData[0])  # считывание нажатой кнопки, преобразуя ее из строки в число
-    if not buttonNumber == 9:  # цифра 9 передается в первый раз в качестве заглушки. Т.е. если передана цифра 9, то клавиатура для сообщения создается впервые
-        charList = list(callBackData)  # строчка callBackData разбивается на посимвольный список "123" -> ['1', '2', '3']
-        charList.pop(0)  # удаление из списка первого элемента: который отвечает за выбор кнопки
-        if charList[buttonNumber] == st.SYMBOL_UNDEF:  # проверка: если в нажатой кнопке не выбран крестик/нолик, то можно туда сходить крестику
-            charList[buttonNumber] = st.SYMBOL_X  # эмуляция хода крестика
-            if isWin(charList, st.SYMBOL_X):  # проверка: выиграл ли крестик после своего хода
+    buttonNumber = int(callBackData[0])  
+    if not buttonNumber == 9:  
+        charList = list(callBackData)  
+        charList.pop(0)  
+        if charList[buttonNumber] == st.SYMBOL_UNDEF: 
+            charList[buttonNumber] = st.SYMBOL_X  
+            if isWin(charList, st.SYMBOL_X):  
                 message = st.ANSW_YOU_WIN
-            else:  # если крестик не выиграл, то может сходит бот, т.е. нолик
-                if countUndefinedCells(charList) != 0:  # проверка: есть ли свободные ячейки для хода
-                    # если есть, то ходит бот (нолик)
+            else:  
+                if countUndefinedCells(charList) != 0:  
                     isCycleContinue = True
-                    # запуск бесконечного цикла т.к. необходимо, чтобы бот походил в свободную клетку, а клетка выбирается случайным образом
                     while (isCycleContinue):
-                        rand = random.randint(0, 8)  # генерация случайного числа - клетки, в которую сходит бот
-                        if charList[rand] == st.SYMBOL_UNDEF:  # если клетка неопределенна, то ходит бот
+                        rand = random.randint(0, 8) 
+                        if charList[rand] == st.SYMBOL_UNDEF:  
                             charList[rand] = st.SYMBOL_O
-                            isCycleContinue = False  # смена значения переменной для остановки цикла
-                            if isWin(charList, st.SYMBOL_O):  # проверка: выиграл ли бот после своего кода
+                            isCycleContinue = False  
+                            if isWin(charList, st.SYMBOL_O):  
                                 message = st.ANSW_BOT_WIN
-
-        # если клетка, в которую хотел походить пользователь уже занята:
         else:
             alert = st.ALERT_CANNOT_MOVE_TO_THIS_CELL
-
-        # проверка: остались ли свободные ячейки для хода и что изначальное сообщение не поменялось (означает, что победителя нет, и что это был не ошибочный ход)
         if countUndefinedCells(charList) == 0 and message == st.ANSW_YOUR_TURN:
             message = st.ANSW_DRAW
 
@@ -101,6 +76,7 @@ def game(callBackData):
         callBackData = ''
         for c in charList:
             callBackData += c
+
 
     # проверка, что игра закончилась (message равно одному из трех вариантов: победил Х, 0 или ничья):
     if message == st.ANSW_YOU_WIN or message == st.ANSW_BOT_WIN or message == st.ANSW_DRAW:
@@ -110,38 +86,17 @@ def game(callBackData):
             for j in range(0, 3):
                 message += callBackData[j + i * 3] + ' | '
         callBackData = None  # обнуление callBackData
-
     return message, callBackData, alert
 
 
-# Формат объекта клавиатуры
-# в этом примере описана клавиатура из трех строчек кнопок
-# в первой строчке две кнопки
-# во 2-ой и 3-ей строчке по одной
-# keyboard = [
-#     # строчка из кнопок:
-#     [
-#         # собственно кнопки
-#         InlineKeyboardButton("Кнопка 1", callback_data='1'),
-#         InlineKeyboardButton("Кнопка 2", callback_data='2'),
-#     ],
-#     [InlineKeyboardButton("Кнопка 3", callback_data='3')],
-#     [InlineKeyboardButton("Кнопка 4", callback_data='4')],
-# ]
-# для формирования объекта клавиатуры, необходимо выполнить следующую команду:
-# InlineKeyboardMarkup(keyboard)
-
-# возвращает клавиатуру для бота
 # на вход получает callBackData - данные с callBack-кнопки
 def getKeyboard(callBackData):
-    keyboard = [[], [], []]  # заготовка объекта клавиатуры, которая вернется
+    keyboard = [[], [], []]
 
-    if callBackData != None:  # если
-        # формирование объекта клавиатуры
+    if callBackData != None:  
         for i in range(0, 3):
             for j in range(0, 3):
                 keyboard[i].append(InlineKeyboardButton(callBackData[j + i * 3], callback_data=str(j + i * 3) + callBackData))
-
     return keyboard
 
 
@@ -157,13 +112,13 @@ def newGame(update, _):
 
 def button(update, _):
     query = update.callback_query
-    callbackData = query.data  # получение callbackData, скрытых в кнопке
+    callbackData = query.data 
 
-    message, callbackData, alert = game(callbackData)  # игра
-    if alert is None:  # если не получен сигнал тревоги (alert==None), то редактируем сообщение и меняем клавиатуру
-        query.answer()  # обязательно нужно что-то отправить в ответ, иначе могут возникнуть проблемы с ботом
+    message, callbackData, alert = game(callbackData) 
+    if alert is None:  
+        query.answer()  
         query.edit_message_text(text=message, reply_markup=InlineKeyboardMarkup(getKeyboard(callbackData)))
-    else:  # если получен сигнал тревоги (alert!=None), то отобразить сообщение о тревоге
+    else: 
         query.answer(text=alert, show_alert=True)
 
 
